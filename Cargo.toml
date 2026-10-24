@@ -1,6 +1,6 @@
 [package]
 name = "http-extract"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2024"
 rust-version = "1.96.0"
 description = "trust-aware extraction of HTTP request metadata"
@@ -35,6 +35,7 @@ default = [
     "content-type",
     "forwarded",
     "x-forwarded",
+    "scheme",
 ]
 api-key = []
 authority = []
@@ -46,6 +47,7 @@ client-ip-headers = []
 content-type = ["dep:mime"]
 forwarded = []
 x-forwarded = []
+scheme = ["forwarded", "x-forwarded"]
 
 [dependencies]
 axum = { version = "0.8", optional = true, default-features = false, features = [

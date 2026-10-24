@@ -1,4 +1,4 @@
-//! Strict extraction of untrusted client IP assertions from `Forwarded`.
+//! Extraction of untrusted client IP and raw protocol assertions from `Forwarded`.
 //!
 //! [`extract_header_forwarded_for`] implements the crate's deliberately narrow
 //! use of the standardized field: every field element must contain a usable
@@ -10,7 +10,8 @@
 //! by [RFC 7239, Section 5.2], node identifiers by [RFC 7239, Section 6], and
 //! the trust limitations by [RFC 7239, Section 8]. This crate implements only
 //! the subset needed to produce a continuous IP chain, not the full RFC object
-//! model.
+//! model. The separate protocol extractor returns borrowed raw metadata and
+//! accepts repeated field lines without requiring a continuous IP chain.
 //!
 //! [RFC 7239, Section 4]: https://www.rfc-editor.org/rfc/rfc7239.html#section-4
 //! [RFC 7239, Section 5.2]: https://www.rfc-editor.org/rfc/rfc7239.html#section-5.2
@@ -27,6 +28,48 @@ use crate::{Error, header::extract_single_header_text};
 ///
 /// [RFC 7239, Section 4]: https://www.rfc-editor.org/rfc/rfc7239.html#section-4
 pub const FORWARDED: HeaderName = HeaderName::from_static("forwarded");
+
+/// Extract the first raw `proto=` assertion from `Forwarded` field lines.
+///
+/// Field lines and elements are searched in wire order. Parameter names are
+/// case-insensitive, quoted delimiters are respected, and surrounding double
+/// quotes are removed. The returned text is borrowed without normalization,
+/// scheme validation, or quoted-pair unescaping. Other parameters are ignored;
+/// unlike the IP-chain extractor, this does not require a `for=` parameter.
+/// Missing fields or parameters return `Ok(None)`. Non-text field lines and
+/// unbalanced quotes encountered while searching return a value-redacting error.
+/// Parsing does not establish proxy trust, and later field lines are not read
+/// after a protocol has been selected.
+pub fn extract_header_forwarded_proto(headers: &HeaderMap) -> Result<Option<&str>, Error> {
+    for value in headers.get_all(&FORWARDED) {
+        let value = value.to_str().map_err(|_| invalid())?;
+        for element in split_quoted(value, ',')? {
+            for parameter in split_quoted(element, ';')? {
+                let Some((name, value)) = parameter.trim().split_once('=') else {
+                    continue;
+                };
+                if name.trim().eq_ignore_ascii_case("proto") {
+                    let value = value.trim();
+                    return Ok(Some(
+                        value
+                            .strip_prefix('"')
+                            .and_then(|value| value.strip_suffix('"'))
+                            .unwrap_or(value),
+                    ));
+                }
+            }
+        }
+    }
+    Ok(None)
+}
+
+/// Extract the first raw `Forwarded` protocol assertion from a request.
+///
+/// Delegates to [`extract_header_forwarded_proto`], preserving its ordering,
+/// borrowed raw values, errors, and lack of proxy authentication.
+pub fn extract_request_forwarded_proto<B>(request: &Request<B>) -> Result<Option<&str>, Error> {
+    extract_header_forwarded_proto(request.headers())
+}
 
 /// Extract RFC 7239 `Forwarded` `for=` values as an untrusted IP chain.
 ///
@@ -254,6 +297,40 @@ mod tests {
     use http::{HeaderMap, HeaderValue};
 
     use super::*;
+
+    #[test]
+    fn forwarded_proto_reads_repeated_lines_and_quoted_parameters() {
+        let mut headers = HeaderMap::new();
+        assert_eq!(extract_header_forwarded_proto(&headers), Ok(None));
+        headers.append(&FORWARDED, "for=192.0.2.1".parse().unwrap());
+        assert_eq!(extract_header_forwarded_proto(&headers), Ok(None));
+        headers.append(
+            &FORWARDED,
+            "ext=\"proto=http,;\";Proto=\"HTTPS\"".parse().unwrap(),
+        );
+        headers.append(&FORWARDED, "proto=http".parse().unwrap());
+        assert_eq!(extract_header_forwarded_proto(&headers), Ok(Some("HTTPS")));
+        let request = Request::builder()
+            .header(&FORWARDED, "proto=https")
+            .body(())
+            .unwrap();
+        assert_eq!(extract_request_forwarded_proto(&request), Ok(Some("https")));
+    }
+
+    #[test]
+    fn forwarded_proto_rejects_invalid_text_and_unbalanced_quotes() {
+        for value in [
+            HeaderValue::from_bytes(&[0xff]).unwrap(),
+            HeaderValue::from_static("proto=\"https"),
+        ] {
+            let mut headers = HeaderMap::new();
+            headers.insert(&FORWARDED, value);
+            assert!(matches!(
+                extract_header_forwarded_proto(&headers),
+                Err(Error::InvalidHeader { .. })
+            ));
+        }
+    }
 
     #[test]
     fn returns_none_when_forwarded_is_absent() {

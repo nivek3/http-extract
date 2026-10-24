@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-10-24
+
+### Added
+
+- Add borrowed `Forwarded` proto extractors with repeated-field and quote-aware delimiter handling.
+- Add the `scheme` feature and best-effort `extract_request_url_scheme`, preserving URI / raw `X-Forwarded-Proto` / `Forwarded` precedence without changing existing validated chain APIs.
+
 ## [0.1.3](https://github.com/nivek-ph/http-extract/compare/v0.1.2...v0.1.3) - 2026-08-11
 
 ### Fixed

@@ -3,7 +3,7 @@
 The crate declares Rust 1.96.0 as its compiler compatibility baseline. Default
 features enable the complete common extraction API: `api-key`, `authority`,
 `authorization`, `client-ip`, `client-ip-headers`, `content-type`, `forwarded`,
-`request-id`, and `x-forwarded`.
+`request-id`, `x-forwarded`, and `scheme`.
 
 Every extraction feature owns one field family. Header functions contain the
 parsing implementation; matching Request functions delegate through
@@ -20,9 +20,10 @@ parsing implementation; matching Request functions delegate through
 | `client-ip` | Socket-peer helpers and default/custom Header selection | `extract_socket_ip`, `extract_client_ip`, `extract_client_ip_with_headers`, `extract_proxy_client_ip` | `Option<IpAddr>` |
 | `client-ip-headers` | Common provider and proxy client-IP fields | one `extract_header_*` and `extract_request_*` pair per field | `Option<IpAddr>` |
 | `content-type` | Strict Content-Type parsing and the optional `mime` dependency | `extract_header_content_type`, `extract_request_content_type` | `Option<Mime>` |
-| `forwarded` | Strict RFC 7239 `Forwarded` `for=` IP chains | `extract_header_forwarded_for`, `extract_request_forwarded_for` | `Option<Vec<IpAddr>>` |
+| `forwarded` | Strict `for=` IP chains and raw `proto=` selection | `extract_header_forwarded_for`, `extract_request_forwarded_for`, `extract_header_forwarded_proto`, `extract_request_forwarded_proto` | `Option<Vec<IpAddr>>` or `Option<&str>` |
 | `request-id` | `X-Request-Id`, then `Request-Id` precedence | `extract_header_request_id`, `extract_request_request_id` | `Option<&str>` |
 | `x-forwarded` | Raw `X-Forwarded-For` and `X-Forwarded-Proto` parsing | `extract_*_x_forwarded_for`, `extract_*_x_forwarded_proto` | `Option<Vec<IpAddr>>` or `Option<Vec<String>>` |
+| `scheme` | Best-effort URI / raw proxy scheme selection | `extract_request_url_scheme` | `Option<&str>` directly, without a `Result` |
 
 The crate-wide `Error` and generic `header` utilities remain available with no
 default features. `header` includes the strict singular-field helpers and
@@ -49,6 +50,14 @@ See the [client IP trust boundary](trusted-proxies.md) before using a
 Header-derived address for authorization, rate limiting, or auditing.
 
 ## Feature relationships
+
+`scheme` enables `forwarded` and `x-forwarded`. Its selector retains the URI
+scheme first, then the raw first `X-Forwarded-Proto` value, then the first
+`Forwarded` protocol assertion. It preserves empty/raw values and omits parsing
+errors. `Forwarded` protocol selection accepts repeated field lines and respects
+quoted delimiters; quotes are stripped but quoted pairs are not unescaped.
+This raw metadata API does not replace the normalized `X-Forwarded-Proto` chain
+parser or establish proxy trust.
 
 `client-ip` enables `client-ip-headers`, `forwarded`, and `x-forwarded` because
 its selectors use those parsing APIs. `content-type` enables the optional

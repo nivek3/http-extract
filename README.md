@@ -121,9 +121,10 @@ auditing.
 | `client-ip`         | Socket-peer helpers and default/custom Header selection |
 | `client-ip-headers` | Common provider and proxy client-IP fields              |
 | `content-type`      | Strict parsing into `mime::Mime`                        |
-| `forwarded`         | RFC 7239 `Forwarded` `for=` IP chains                   |
+| `forwarded`         | `Forwarded` `for=` IP chains and raw `proto=` selection |
 | `request-id`        | `X-Request-Id`, then `Request-Id` fallback              |
 | `x-forwarded`       | `X-Forwarded-For` and `X-Forwarded-Proto` parsing       |
+| `scheme`            | Best-effort URI / proxy URL scheme selection           |
 | `axum`              | Optional `ConnectInfo<SocketAddr>` peer adapter         |
 
 Default features include every row except `axum`. With no default features, the
@@ -137,9 +138,18 @@ for exact functions, return types, and feature relationships.
 
 ## 🔐 Errors and sensitive values
 
-Missing optional metadata returns `Ok(None)`. Duplicate, non-text, and malformed
-fields return the crate-wide `Error`. Errors identify the field and category,
-never the raw value.
+Strict field extractors return `Ok(None)` for missing optional metadata.
+Duplicate, non-text, and malformed fields return the crate-wide `Error` as
+documented by each extractor. Errors identify the field and category, never
+the raw value.
+
+The `scheme` feature adds `extract_request_url_scheme`, a best-effort borrowed
+selector with this order: URI scheme, raw first `X-Forwarded-Proto` field line,
+then the first `Forwarded` `proto=` assertion. It preserves raw case, empty
+values, and protocol lists; it does not validate a protocol chain or authenticate
+a proxy. A non-text `X-Forwarded-Proto` value falls back to `Forwarded`, and
+`Forwarded` extraction errors yield `None`. Use the existing validated
+`extract_header_x_forwarded_proto` API when a normalized protocol chain is needed.
 
 Authorization credentials and API keys are exposed only by their explicit
 extractors. Do not log those values, cookies, request bodies, complete query

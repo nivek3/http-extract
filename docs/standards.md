@@ -17,7 +17,7 @@ protocol conformance.
   the Authorization framework context. The crate only extracts these fields;
   it is not a complete HTTP implementation and does not authenticate.
 - [Forwarded, RFC 7239](https://www.rfc-editor.org/rfc/rfc7239.html): support is
-  intentionally limited to the field structure in
+  based on the field structure in
   [Section 4](https://www.rfc-editor.org/rfc/rfc7239.html#section-4), the
   [`for=` parameter in Section 5.2](https://www.rfc-editor.org/rfc/rfc7239.html#section-5.2),
   and IP node forms from
@@ -30,6 +30,13 @@ protocol conformance.
   trust; deployments must account for the
   [Section 8](https://www.rfc-editor.org/rfc/rfc7239.html#section-8) security
   considerations independently.
+  The separate `extract_header_forwarded_proto` API selects the first raw
+  `proto=` parameter across repeated field lines, respecting quoted delimiters.
+  It strips surrounding quotes without unescaping or validating the returned
+  scheme text; it does not require a `for=` parameter. The `scheme` feature
+  composes this with URI scheme and raw first `X-Forwarded-Proto` selection for
+  best-effort metadata extraction. These selectors do not implement the full
+  RFC 7239 protocol validation rules.
 - [Bearer Token Usage, RFC 6750 Section 2.1](https://www.rfc-editor.org/rfc/rfc6750.html#section-2.1):
   the helper performs ASCII case-insensitive scheme routing and returns the raw
   credential substring. It does not validate a token or authenticate.
