@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4](https://github.com/nivek3/http-extract/compare/v0.1.3...v0.1.4) - 2026-10-24
+
+### Added
+
+- add validated proxy protocol and URL scheme extraction
+
+### Other
+
+- update author information and repository links to reflect new ownership
+- update README with badge links and section icons for better visibility
+
 ## [0.1.3](https://github.com/nivek3/http-extract/compare/v0.1.2...v0.1.3) - 2026-08-11
 
 ### Fixed
