@@ -16,10 +16,9 @@ protocol conformance.
   [Section 11](https://www.rfc-editor.org/rfc/rfc9110.html#section-11) supplies
   the Authorization framework context. The crate only extracts these fields;
   it is not a complete HTTP implementation and does not authenticate.
-  Host extraction uses `http::uri::Authority` and additionally rejects userinfo
-  and non-digit port text. The port grammar permits empty ports and is not
-  limited to `u16`; URI authority selection retains its existing precedence
-  without validating a lower-priority Host field.
+  Host extraction delegates syntax parsing to `http::uri::Authority` without
+  additional Host-specific checks. URI authority selection retains its existing
+  precedence without validating a lower-priority Host field.
 - [Forwarded, RFC 7239](https://www.rfc-editor.org/rfc/rfc7239.html): support is
   based on the field structure in
   [Section 4](https://www.rfc-editor.org/rfc/rfc7239.html#section-4), the

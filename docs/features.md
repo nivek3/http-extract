@@ -14,7 +14,7 @@ parsing implementation; matching Request functions delegate through
 | Cargo feature | Adds | Main APIs | Success value |
 | --- | --- | --- | --- |
 | `api-key` | `X-API-Key`, then `Api-Key` extraction | `extract_header_api_key`, `extract_request_api_key` | `Option<&str>` |
-| `authority` | URI authority and strict `Host` extraction | `extract_header_authority`, `extract_request_authority` | `Option<Authority>` |
+| `authority` | URI authority and singular `Host` parsing | `extract_header_authority`, `extract_request_authority` | `Option<Authority>` |
 | `authorization` | Raw Authorization and Bearer/Basic scheme routing | `extract_*_authorization`, `extract_*_bearer_token`, `extract_*_basic_credentials` | `Option<&str>` |
 | `axum` | Optional Axum `ConnectInfo<SocketAddr>` peer adapter | `extract_axum_socket_address`, `extract_axum_socket_ip` | `Option<SocketAddr>` or `Option<IpAddr>` |
 | `client-ip` | Socket-peer helpers and default/custom Header selection | `extract_socket_ip`, `extract_client_ip`, `extract_client_ip_with_headers`, `extract_proxy_client_ip` | `Option<IpAddr>` |

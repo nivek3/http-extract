@@ -12,10 +12,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add `Forwarded` proto extractors returning decoded, lowercase protocols with repeated-field handling, scheme-syntax validation, and duplicate parameter rejection.
 - Add the `scheme` feature and `extract_request_url_scheme` returning `Result<Option<String>, Error>`, selecting URI / validated first XFP protocol / Forwarded in order and propagating malformed-source errors. Existing protocol-chain APIs retain their behavior.
 
-### Fixed
-
-- Reject userinfo and non-digit port text in Host fields instead of accepting every generic URI authority; keep empty and numeric ports valid without `u16` conversion.
-
 ## [0.1.3](https://github.com/nivek3/http-extract/compare/v0.1.2...v0.1.3) - 2026-08-11
 
 ### Fixed

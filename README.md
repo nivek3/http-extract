@@ -116,7 +116,7 @@ auditing.
 | Cargo feature       | What it adds                                            |
 | ------------------- | ------------------------------------------------------- |
 | `api-key`           | `X-API-Key`, then `Api-Key` extraction                  |
-| `authority`         | URI authority and strict `Host` extraction              |
+| `authority`         | URI authority and singular `Host` parsing              |
 | `authorization`     | Raw Authorization and Bearer/Basic scheme routing       |
 | `client-ip`         | Socket-peer helpers and default/custom Header selection |
 | `client-ip-headers` | Common provider and proxy client-IP fields              |
