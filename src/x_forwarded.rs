@@ -12,7 +12,7 @@ use std::net::{IpAddr, SocketAddr};
 
 use http::{HeaderMap, HeaderName, Request};
 
-use crate::Error;
+use crate::{Error, header::is_scheme};
 
 /// The de facto, non-IETF `X-Forwarded-For` field name.
 pub const X_FORWARDED_FOR: HeaderName = HeaderName::from_static("x-forwarded-for");
@@ -118,12 +118,6 @@ fn extract_comma_values<T>(
         }
     }
     Ok(present.then_some(output))
-}
-
-fn is_scheme(value: &str) -> bool {
-    let mut bytes = value.bytes();
-    matches!(bytes.next(), Some(byte) if byte.is_ascii_alphabetic())
-        && bytes.all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'+' | b'-' | b'.'))
 }
 
 #[cfg(test)]

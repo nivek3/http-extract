@@ -14,15 +14,28 @@ use crate::{Error, header::extract_single_header_text};
 /// Extract a strict, singular, syntactically valid `Host` authority.
 ///
 /// A missing field returns `None`. Duplicate, non-text, and syntactically
-/// invalid fields, including an empty value, return an error that does not
-/// contain the field value. This function reads only the [`HeaderMap`]; it does
+/// invalid fields, including an empty value, userinfo, and non-digit ports,
+/// return an error that does not contain the field value. This function reads
+/// only the [`HeaderMap`]; it does
 /// not inspect a request URI or determine whether the authority is trusted.
+/// Port syntax follows RFC 3986: an empty port is allowed and numeric ports
+/// are not restricted to the `u16` range.
 pub fn extract_header_authority(headers: &HeaderMap) -> Result<Option<Authority>, Error> {
     extract_single_header_text(headers, &HOST)?
         .map(|value| {
-            value
+            let authority = value
                 .parse::<Authority>()
-                .map_err(|_| Error::invalid_header(HOST))
+                .map_err(|_| Error::invalid_header(HOST))?;
+            let suffix = &value[authority.host().len()..];
+            if value.contains('@')
+                || (!suffix.is_empty()
+                    && !suffix
+                        .strip_prefix(':')
+                        .is_some_and(|port| port.bytes().all(|byte| byte.is_ascii_digit())))
+            {
+                return Err(Error::invalid_header(HOST));
+            }
+            Ok(authority)
         })
         .transpose()
 }
@@ -86,6 +99,56 @@ mod tests {
             extract_header_authority(&non_text),
             Err(Error::InvalidHeader { .. })
         ));
+    }
+
+    #[test]
+    fn host_rejects_userinfo_and_non_digit_ports() {
+        for value in [
+            "user@example.com",
+            "user:password@example.com:443",
+            "example.com:service",
+            "example.com:+443",
+            "example.com:44x",
+            "[2001:db8::1]:service",
+            "[2001:db8::1]junk",
+        ] {
+            let request = Request::builder()
+                .uri("/items")
+                .header(HOST, value)
+                .body(())
+                .unwrap();
+            assert_eq!(
+                extract_header_authority(request.headers()),
+                Err(Error::invalid_header(HOST)),
+                "unexpectedly accepted {value:?}"
+            );
+            assert_eq!(
+                extract_request_authority(&request),
+                Err(Error::invalid_header(HOST))
+            );
+        }
+    }
+
+    #[test]
+    fn host_accepts_digit_port_syntax_without_u16_conversion() {
+        for value in [
+            "example.com",
+            "example.com:",
+            "example.com:65536",
+            "[2001:db8::1]",
+            "[2001:db8::1]:",
+            "[2001:db8::1]:8443",
+        ] {
+            let mut headers = HeaderMap::new();
+            headers.insert(HOST, value.parse().unwrap());
+            assert_eq!(
+                extract_header_authority(&headers)
+                    .unwrap()
+                    .unwrap()
+                    .as_str(),
+                value
+            );
+        }
     }
 
     #[test]

@@ -1,8 +1,8 @@
-//! Extraction of untrusted client IP and raw protocol assertions from `Forwarded`.
+//! Extraction of untrusted client IP and protocol assertions from `Forwarded`.
 //!
 //! [`extract_header_forwarded_for`] implements the crate's deliberately narrow
 //! use of the standardized field: every field element must contain a usable
-//! `for=` IP address, and the resulting chain remains untrusted. Effective
+//! `for=` IP address, and the resulting chain remains untrusted.
 //! A feature-gated [`crate::extract_client_ip`] convenience can select from
 //! this and other fields, but that selection does not establish trust.
 //!
@@ -10,7 +10,7 @@
 //! by [RFC 7239, Section 5.2], node identifiers by [RFC 7239, Section 6], and
 //! the trust limitations by [RFC 7239, Section 8]. This crate implements only
 //! the subset needed to produce a continuous IP chain, not the full RFC object
-//! model. The separate protocol extractor returns borrowed raw metadata and
+//! model. The separate protocol extractor decodes and validates scheme syntax and
 //! accepts repeated field lines without requiring a continuous IP chain.
 //!
 //! [RFC 7239, Section 4]: https://www.rfc-editor.org/rfc/rfc7239.html#section-4
@@ -22,52 +22,60 @@ use std::net::IpAddr;
 
 use http::{HeaderMap, HeaderName, Request};
 
-use crate::{Error, header::extract_single_header_text};
+use crate::{
+    Error,
+    header::{extract_single_header_text, is_scheme},
+};
 
 /// The standardized `Forwarded` field name from [RFC 7239, Section 4].
 ///
 /// [RFC 7239, Section 4]: https://www.rfc-editor.org/rfc/rfc7239.html#section-4
 pub const FORWARDED: HeaderName = HeaderName::from_static("forwarded");
 
-/// Extract the first raw `proto=` assertion from `Forwarded` field lines.
+/// Extract the first `proto=` assertion from `Forwarded` field lines.
 ///
 /// Field lines and elements are searched in wire order. Parameter names are
-/// case-insensitive, quoted delimiters are respected, and surrounding double
-/// quotes are removed. The returned text is borrowed without normalization,
-/// scheme validation, or quoted-pair unescaping. Other parameters are ignored;
-/// unlike the IP-chain extractor, this does not require a `for=` parameter.
+/// case-insensitive, quoted delimiters are respected, and quoted pairs are
+/// decoded. The protocol must have URI-scheme syntax and is normalized to
+/// lowercase. Registration of the scheme is not checked. Other parameters are
+/// ignored; unlike the IP-chain extractor, this does not require a `for=` parameter.
 /// Missing fields or parameters return `Ok(None)`. Non-text field lines and
-/// unbalanced quotes encountered while searching return a value-redacting error.
-/// Parsing does not establish proxy trust, and later field lines are not read
-/// after a protocol has been selected.
-pub fn extract_header_forwarded_proto(headers: &HeaderMap) -> Result<Option<&str>, Error> {
+/// malformed protocol values, unbalanced quotes, and duplicate `proto` parameters in an
+/// inspected element return a value-redacting error.
+/// Parsing does not establish proxy trust. After inspecting the selected
+/// element, later elements and field lines are not parsed for protocols.
+pub fn extract_header_forwarded_proto(headers: &HeaderMap) -> Result<Option<String>, Error> {
     for value in headers.get_all(&FORWARDED) {
         let value = value.to_str().map_err(|_| invalid())?;
         for element in split_quoted(value, ',')? {
+            let mut proto = None;
             for parameter in split_quoted(element, ';')? {
-                let Some((name, value)) = parameter.trim().split_once('=') else {
-                    continue;
-                };
-                if name.trim().eq_ignore_ascii_case("proto") {
-                    let value = value.trim();
-                    return Ok(Some(
-                        value
-                            .strip_prefix('"')
-                            .and_then(|value| value.strip_suffix('"'))
-                            .unwrap_or(value),
-                    ));
+                let parameter = trim_ows(parameter);
+                let (name, value) = parameter.split_once('=').unwrap_or((parameter, ""));
+                if trim_ows(name).eq_ignore_ascii_case("proto") {
+                    if proto.is_some() {
+                        return Err(invalid());
+                    }
+                    let (value, _) = parse_parameter_value(value)?;
+                    if !is_scheme(&value) {
+                        return Err(invalid());
+                    }
+                    proto = Some(value.to_ascii_lowercase());
                 }
+            }
+            if proto.is_some() {
+                return Ok(proto);
             }
         }
     }
     Ok(None)
 }
 
-/// Extract the first raw `Forwarded` protocol assertion from a request.
+/// Extract the first `Forwarded` protocol assertion from a request.
 ///
 /// Delegates to [`extract_header_forwarded_proto`], preserving its ordering,
-/// borrowed raw values, errors, and lack of proxy authentication.
-pub fn extract_request_forwarded_proto<B>(request: &Request<B>) -> Result<Option<&str>, Error> {
+/// decoding, normalization, errors, and lack of proxy authentication.
+pub fn extract_request_forwarded_proto<B>(request: &Request<B>) -> Result<Option<String>, Error> {
     extract_header_forwarded_proto(request.headers())
 }
 
@@ -309,12 +317,20 @@ mod tests {
             "ext=\"proto=http,;\";Proto=\"HTTPS\"".parse().unwrap(),
         );
         headers.append(&FORWARDED, "proto=http".parse().unwrap());
-        assert_eq!(extract_header_forwarded_proto(&headers), Ok(Some("HTTPS")));
+        assert_eq!(
+            extract_header_forwarded_proto(&headers).unwrap().as_deref(),
+            Some("https")
+        );
         let request = Request::builder()
             .header(&FORWARDED, "proto=https")
             .body(())
             .unwrap();
-        assert_eq!(extract_request_forwarded_proto(&request), Ok(Some("https")));
+        assert_eq!(
+            extract_request_forwarded_proto(&request)
+                .unwrap()
+                .as_deref(),
+            Some("https")
+        );
     }
 
     #[test]
@@ -330,6 +346,59 @@ mod tests {
                 Err(Error::InvalidHeader { .. })
             ));
         }
+    }
+
+    #[test]
+    fn forwarded_proto_decodes_and_validates_scheme_syntax() {
+        for (value, expected) in [
+            (r#"proto="h\ttps""#, "https"),
+            ("proto=Web+TLS", "web+tls"),
+            ("for=unknown;proto=https", "https"),
+            ("proto=https, proto=http", "https"),
+        ] {
+            let mut headers = HeaderMap::new();
+            headers.insert(&FORWARDED, value.parse().unwrap());
+            assert_eq!(
+                extract_header_forwarded_proto(&headers).unwrap().as_deref(),
+                Some(expected)
+            );
+        }
+    }
+
+    #[test]
+    fn forwarded_proto_rejects_empty_invalid_and_duplicate_protocols() {
+        for value in [
+            "proto=",
+            "proto",
+            r#"proto="""#,
+            "proto=1https",
+            "proto=http_2",
+            r#"proto="https, http""#,
+            r#"proto="https http""#,
+            r#"proto="https"junk"#,
+            r#"proto="https\""#,
+            "proto=https;proto=http",
+            "proto=https;PROTO=https",
+        ] {
+            let mut headers = HeaderMap::new();
+            headers.insert(&FORWARDED, value.parse().unwrap());
+            assert_eq!(
+                extract_header_forwarded_proto(&headers),
+                Err(invalid()),
+                "unexpectedly accepted {value:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn forwarded_proto_stops_after_the_selected_element() {
+        let mut headers = HeaderMap::new();
+        headers.append(&FORWARDED, "proto=https".parse().unwrap());
+        headers.append(&FORWARDED, HeaderValue::from_bytes(&[0xff]).unwrap());
+        assert_eq!(
+            extract_header_forwarded_proto(&headers).unwrap().as_deref(),
+            Some("https")
+        );
     }
 
     #[test]

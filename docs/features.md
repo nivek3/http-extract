@@ -20,10 +20,10 @@ parsing implementation; matching Request functions delegate through
 | `client-ip` | Socket-peer helpers and default/custom Header selection | `extract_socket_ip`, `extract_client_ip`, `extract_client_ip_with_headers`, `extract_proxy_client_ip` | `Option<IpAddr>` |
 | `client-ip-headers` | Common provider and proxy client-IP fields | one `extract_header_*` and `extract_request_*` pair per field | `Option<IpAddr>` |
 | `content-type` | Strict Content-Type parsing and the optional `mime` dependency | `extract_header_content_type`, `extract_request_content_type` | `Option<Mime>` |
-| `forwarded` | Strict `for=` IP chains and raw `proto=` selection | `extract_header_forwarded_for`, `extract_request_forwarded_for`, `extract_header_forwarded_proto`, `extract_request_forwarded_proto` | `Option<Vec<IpAddr>>` or `Option<&str>` |
+| `forwarded` | Strict `for=` IP chains and validated `proto=` selection | `extract_header_forwarded_for`, `extract_request_forwarded_for`, `extract_header_forwarded_proto`, `extract_request_forwarded_proto` | `Option<Vec<IpAddr>>` or `Option<String>` |
 | `request-id` | `X-Request-Id`, then `Request-Id` precedence | `extract_header_request_id`, `extract_request_request_id` | `Option<&str>` |
 | `x-forwarded` | Raw `X-Forwarded-For` and `X-Forwarded-Proto` parsing | `extract_*_x_forwarded_for`, `extract_*_x_forwarded_proto` | `Option<Vec<IpAddr>>` or `Option<Vec<String>>` |
-| `scheme` | Best-effort URI / raw proxy scheme selection | `extract_request_url_scheme` | `Option<&str>` directly, without a `Result` |
+| `scheme` | URI / validated proxy scheme selection | `extract_request_url_scheme` | `Option<String>` inside `Result<_, Error>` |
 
 The crate-wide `Error` and generic `header` utilities remain available with no
 default features. `header` includes the strict singular-field helpers and
@@ -51,13 +51,19 @@ Header-derived address for authorization, rate limiting, or auditing.
 
 ## Feature relationships
 
-`scheme` enables `forwarded` and `x-forwarded`. Its selector retains the URI
-scheme first, then the raw first `X-Forwarded-Proto` value, then the first
-`Forwarded` protocol assertion. It preserves empty/raw values and omits parsing
-errors. `Forwarded` protocol selection accepts repeated field lines and respects
-quoted delimiters; quotes are stripped but quoted pairs are not unescaped.
-This raw metadata API does not replace the normalized `X-Forwarded-Proto` chain
-parser or establish proxy trust.
+`scheme` enables `forwarded` and `x-forwarded`. Its selector returns
+`Result<Option<String>, Error>` and prefers the URI scheme, then the first
+protocol from the existing validated `X-Forwarded-Proto` chain parser, then the
+first `Forwarded` protocol assertion. Only absent sources fall back; parsing
+errors are propagated and lower-priority sources are not inspected after
+selection. The XFP parser validates all field lines and items before selection.
+
+`Forwarded` protocol selection accepts repeated field lines, respects quoted
+delimiters, decodes quoted pairs, validates URI-scheme syntax, and normalizes to
+lowercase. Empty or invalid protocol values and duplicate `proto` parameters
+within an inspected element return an error. Other parameters are ignored, and
+later elements and field lines are not parsed for protocols after selection.
+These APIs do not check scheme registration or establish proxy trust.
 
 `client-ip` enables `client-ip-headers`, `forwarded`, and `x-forwarded` because
 its selectors use those parsing APIs. `content-type` enables the optional

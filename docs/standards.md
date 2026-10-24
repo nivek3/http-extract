@@ -16,6 +16,10 @@ protocol conformance.
   [Section 11](https://www.rfc-editor.org/rfc/rfc9110.html#section-11) supplies
   the Authorization framework context. The crate only extracts these fields;
   it is not a complete HTTP implementation and does not authenticate.
+  Host extraction uses `http::uri::Authority` and additionally rejects userinfo
+  and non-digit port text. The port grammar permits empty ports and is not
+  limited to `u16`; URI authority selection retains its existing precedence
+  without validating a lower-priority Host field.
 - [Forwarded, RFC 7239](https://www.rfc-editor.org/rfc/rfc7239.html): support is
   based on the field structure in
   [Section 4](https://www.rfc-editor.org/rfc/rfc7239.html#section-4), the
@@ -30,13 +34,21 @@ protocol conformance.
   trust; deployments must account for the
   [Section 8](https://www.rfc-editor.org/rfc/rfc7239.html#section-8) security
   considerations independently.
-  The separate `extract_header_forwarded_proto` API selects the first raw
-  `proto=` parameter across repeated field lines, respecting quoted delimiters.
-  It strips surrounding quotes without unescaping or validating the returned
-  scheme text; it does not require a `for=` parameter. The `scheme` feature
-  composes this with URI scheme and raw first `X-Forwarded-Proto` selection for
-  best-effort metadata extraction. These selectors do not implement the full
-  RFC 7239 protocol validation rules.
+  The separate `extract_header_forwarded_proto` API selects the first
+  `proto=` parameter across repeated field lines, respecting quoted delimiters
+  and decoding quoted pairs. It validates URI-scheme syntax from
+  [RFC 3986 Section 3.1](https://www.rfc-editor.org/rfc/rfc3986.html#section-3.1),
+  normalizes to lowercase, and rejects empty/invalid values and duplicate
+  `proto` parameters in an inspected element. It does not require `for=` or
+  validate other parameters. Later elements and field lines are not parsed for
+  protocols after selection. The scheme registration requirement in
+  [Section 5.4](https://www.rfc-editor.org/rfc/rfc7239.html#section-5.4) is not
+  checked, so this remains a subset rather than full RFC 7239 validation.
+  The `scheme` feature prefers URI scheme, then the first protocol from the
+  validated `X-Forwarded-Proto` chain, then this Forwarded assertion. This is
+  library policy, not an RFC-defined proxy priority. The selector returns
+  `Result<Option<String>, Error>` and falls back only when a source is absent;
+  parsing errors are propagated.
 - [Bearer Token Usage, RFC 6750 Section 2.1](https://www.rfc-editor.org/rfc/rfc6750.html#section-2.1):
   the helper performs ASCII case-insensitive scheme routing and returns the raw
   credential substring. It does not validate a token or authenticate.
