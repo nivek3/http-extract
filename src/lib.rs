@@ -36,6 +36,8 @@ mod header;
 
 #[cfg(feature = "request-id")]
 mod request_id;
+#[cfg(feature = "scheme")]
+mod scheme;
 #[cfg(feature = "x-forwarded")]
 mod x_forwarded;
 
@@ -63,5 +65,7 @@ pub use content_type::*;
 pub use forwarded::*;
 #[cfg(feature = "request-id")]
 pub use request_id::*;
+#[cfg(feature = "scheme")]
+pub use scheme::*;
 #[cfg(feature = "x-forwarded")]
 pub use x_forwarded::*;

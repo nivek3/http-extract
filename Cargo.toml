@@ -35,6 +35,7 @@ default = [
     "content-type",
     "forwarded",
     "x-forwarded",
+    "scheme",
 ]
 api-key = []
 authority = []
@@ -46,6 +47,7 @@ client-ip-headers = []
 content-type = ["dep:mime"]
 forwarded = []
 x-forwarded = []
+scheme = ["forwarded", "x-forwarded"]
 
 [dependencies]
 axum = { version = "0.8", optional = true, default-features = false, features = [

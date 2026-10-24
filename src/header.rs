@@ -11,6 +11,13 @@ use http::{HeaderMap, HeaderName, HeaderValue};
 
 use crate::Error;
 
+#[cfg(any(feature = "forwarded", feature = "x-forwarded"))]
+pub(crate) fn is_scheme(value: &str) -> bool {
+    let mut bytes = value.bytes();
+    matches!(bytes.next(), Some(byte) if byte.is_ascii_alphabetic())
+        && bytes.all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'+' | b'-' | b'.'))
+}
+
 /// Append one already validated field value without replacing existing values.
 ///
 /// Existing values for `name` remain in the map and `value` is appended after

@@ -116,14 +116,15 @@ auditing.
 | Cargo feature       | What it adds                                            |
 | ------------------- | ------------------------------------------------------- |
 | `api-key`           | `X-API-Key`, then `Api-Key` extraction                  |
-| `authority`         | URI authority and strict `Host` extraction              |
+| `authority`         | URI authority and singular `Host` parsing              |
 | `authorization`     | Raw Authorization and Bearer/Basic scheme routing       |
 | `client-ip`         | Socket-peer helpers and default/custom Header selection |
 | `client-ip-headers` | Common provider and proxy client-IP fields              |
 | `content-type`      | Strict parsing into `mime::Mime`                        |
-| `forwarded`         | RFC 7239 `Forwarded` `for=` IP chains                   |
+| `forwarded`         | `Forwarded` `for=` IP chains and validated `proto=` selection |
 | `request-id`        | `X-Request-Id`, then `Request-Id` fallback              |
 | `x-forwarded`       | `X-Forwarded-For` and `X-Forwarded-Proto` parsing       |
+| `scheme`            | URI / validated proxy URL scheme selection           |
 | `axum`              | Optional `ConnectInfo<SocketAddr>` peer adapter         |
 
 Default features include every row except `axum`. With no default features, the
@@ -137,9 +138,20 @@ for exact functions, return types, and feature relationships.
 
 ## 🔐 Errors and sensitive values
 
-Missing optional metadata returns `Ok(None)`. Duplicate, non-text, and malformed
-fields return the crate-wide `Error`. Errors identify the field and category,
-never the raw value.
+Strict field extractors return `Ok(None)` for missing optional metadata.
+Duplicate, non-text, and malformed fields return the crate-wide `Error` as
+documented by each extractor. Errors identify the field and category, never
+the raw value.
+
+The `scheme` feature adds `extract_request_url_scheme`, returning
+`Result<Option<String>, Error>`. Its order is URI scheme, the first protocol in
+`X-Forwarded-Proto`, then the first `Forwarded` `proto=` assertion. Proxy
+protocols are normalized to lowercase; Forwarded quoted pairs are decoded.
+The existing `extract_header_x_forwarded_proto` parser validates every field
+line and protocol before the first protocol is selected. Only absent sources
+fall back; malformed selected sources return an error. Lower-priority sources
+are not inspected after selection. This policy does not check scheme
+registration or authenticate a proxy.
 
 Authorization credentials and API keys are exposed only by their explicit
 extractors. Do not log those values, cookies, request bodies, complete query

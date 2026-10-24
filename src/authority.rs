@@ -11,12 +11,14 @@ use http::{HeaderMap, Request, header::HOST, uri::Authority};
 
 use crate::{Error, header::extract_single_header_text};
 
-/// Extract a strict, singular, syntactically valid `Host` authority.
+/// Parse a singular `Host` field with [`http::uri::Authority`].
 ///
 /// A missing field returns `None`. Duplicate, non-text, and syntactically
-/// invalid fields, including an empty value, return an error that does not
-/// contain the field value. This function reads only the [`HeaderMap`]; it does
-/// not inspect a request URI or determine whether the authority is trusted.
+/// invalid fields according to `Authority`, including an empty value, return an
+/// error that does not contain the field value. This function reads only the
+/// [`HeaderMap`]; it does not inspect a request URI or determine whether the
+/// authority is trusted.
+/// No additional Host-specific syntax checks are performed.
 pub fn extract_header_authority(headers: &HeaderMap) -> Result<Option<Authority>, Error> {
     extract_single_header_text(headers, &HOST)?
         .map(|value| {

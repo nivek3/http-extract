@@ -55,6 +55,9 @@ jobs:
           cargo test --no-default-features --features authority,content-type,request-id --locked
           cargo test --no-default-features --features client-ip --locked
           cargo test --no-default-features --features client-ip-headers --locked
+          cargo test --no-default-features --features forwarded --locked
+          cargo test --no-default-features --features x-forwarded --locked
+          cargo test --no-default-features --features scheme --locked
 
   package:
     name: Documentation and package
