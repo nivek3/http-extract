@@ -5,15 +5,14 @@
 Strict, synchronous HTTP request metadata extraction for Rust, built on
 ordinary `http` types.
 
-[Crates.io](https://crates.io/crates/http-extract)
-[Documentation](https://docs.rs/http-extract)
-[Rust](https://github.com/nivek-ph/http-extract/actions/workflows/rust.yml)
-[License](#license)
+[![Crates.io](https://img.shields.io/crates/v/http-extract.svg)](https://crates.io/crates/http-extract)
+[![Documentation](https://docs.rs/http-extract/badge.svg)](https://docs.rs/http-extract)
+[![License](https://img.shields.io/badge/license-MIT%2FApache--2.0-blue.svg)](#license)
 
-[Guide](https://nivek-ph.github.io/http-extract/) ·
+[Guide](https://nivek3.github.io/http-extract/) ·
 [API reference](https://docs.rs/http-extract) ·
-[Features](https://github.com/nivek-ph/http-extract/blob/main/docs/features.md) ·
-[Axum example](https://github.com/nivek-ph/http-extract/tree/main/examples/axum)
+[Features](https://github.com/nivek3/http-extract/blob/main/docs/features.md) ·
+[Axum example](https://github.com/nivek3/http-extract/tree/main/examples/axum)
 
 `http-extract` provides small, direct functions for reading request metadata.
 The default API is framework-independent; an optional `axum` feature reads an
@@ -24,7 +23,7 @@ same thing**. Values from `Forwarded`, `X-Forwarded-*`, and provider-specific
 client-IP fields remain raw and untrusted until the deployment establishes an
 explicit proxy trust boundary.
 
-## Quick start
+## 🚀 Quick start
 
 Default features enable all common extractor families:
 
@@ -56,7 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 ```
 
 Feature-specific Header and Request pairs follow the same direct shape. See the
-[Features guide](https://github.com/nivek-ph/http-extract/blob/main/docs/features.md)
+[Features guide](https://github.com/nivek3/http-extract/blob/main/docs/features.md)
 for the complete API families.
 
 For a smaller dependency surface, disable defaults and select only what the
@@ -70,7 +69,7 @@ http-extract = { version = "0.1", default-features = false, features = [
 ] }
 ```
 
-## Trust is part of the input
+## 🛡️ Trust is part of the input
 
 ```text
 socket peer ──────────────────────── transport fact
@@ -108,11 +107,11 @@ default Header order and falls back to the socket peer only when every supported
 Header is absent; it does not authenticate a proxy.
 
 Read the
-[client IP trust boundary](https://github.com/nivek-ph/http-extract/blob/main/docs/trusted-proxies.md)
+[client IP trust boundary](https://github.com/nivek3/http-extract/blob/main/docs/trusted-proxies.md)
 before using a Header-derived address for authorization, rate limiting, or
 auditing.
 
-## Features
+## 🧩 Features
 
 | Cargo feature       | What it adds                                            |
 | ------------------- | ------------------------------------------------------- |
@@ -133,10 +132,10 @@ default dependency tree does not include Axum, Tower, Tokio, tracing, or
 OpenTelemetry.
 
 See the complete
-[Features guide](https://github.com/nivek-ph/http-extract/blob/main/docs/features.md)
+[Features guide](https://github.com/nivek3/http-extract/blob/main/docs/features.md)
 for exact functions, return types, and feature relationships.
 
-## Errors and sensitive values
+## 🔐 Errors and sensitive values
 
 Missing optional metadata returns `Ok(None)`. Duplicate, non-text, and malformed
 fields return the crate-wide `Error`. Errors identify the field and category,
@@ -146,10 +145,10 @@ Authorization credentials and API keys are exposed only by their explicit
 extractors. Do not log those values, cookies, request bodies, complete query
 strings, or raw forwarding fields.
 
-## Axum example
+## 📚 Axum example
 
 The runnable
-[Axum example](https://github.com/nivek-ph/http-extract/tree/main/examples/axum)
+[Axum example](https://github.com/nivek3/http-extract/tree/main/examples/axum)
 demonstrates peer extraction, request metadata, client-IP selection, generic
 error responses, and safe observable output:
 
@@ -159,7 +158,7 @@ cargo run --example axum-demo --features axum
 
 Axum is an optional integration boundary, not part of the default library core.
 
-## Compatibility and standards
+## 📖 Compatibility and standards
 
 - Rust 1.96.0 or newer;
 - HTTP semantics from [RFC 9110](https://www.rfc-editor.org/rfc/rfc9110.html);
@@ -172,10 +171,10 @@ Axum is an optional integration boundary, not part of the default library core.
 The crate extracts metadata; it is not a complete HTTP, proxy, or authentication
 implementation. `X-Forwarded-*` and provider-specific fields are de facto or
 vendor conventions, not IETF standards. See
-[Standards and compatibility](https://github.com/nivek-ph/http-extract/blob/main/docs/standards.md)
+[Standards and compatibility](https://github.com/nivek3/http-extract/blob/main/docs/standards.md)
 for the exact support boundary.
 
-## License
+## 📄 License
 
 Licensed under either of
 
