@@ -7,21 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.3](https://github.com/nivek-ph/http-extract/compare/v0.1.2...v0.1.3) - 2026-08-11
+## [0.1.3](https://github.com/nivek3/http-extract/compare/v0.1.2...v0.1.3) - 2026-08-11
 
 ### Fixed
 
-- validate only Forwarded for values ([#9](https://github.com/nivek-ph/http-extract/pull/9))
+- validate only Forwarded for values ([#9](https://github.com/nivek3/http-extract/pull/9))
 
 ### Other
 
-- refresh project documentation ([#8](https://github.com/nivek-ph/http-extract/pull/8))
+- refresh project documentation ([#8](https://github.com/nivek3/http-extract/pull/8))
 
-## [0.1.2](https://github.com/nivek-ph/http-extract/compare/v0.1.1...v0.1.2) - 2026-08-10
+## [0.1.2](https://github.com/nivek3/http-extract/compare/v0.1.1...v0.1.2) - 2026-08-10
 
 ### Added
 
-- add request socket address extractors ([#6](https://github.com/nivek-ph/http-extract/pull/6))
+- add request socket address extractors ([#6](https://github.com/nivek3/http-extract/pull/6))
 
 ### Added
 
@@ -35,7 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   functions; callers with an out-of-band `SocketAddr` can use the value directly or call its
   `ip()` method. The new request-based `extract_socket_ip(&Request)` reads peer extensions.
 
-## [0.1.1](https://github.com/nivek-ph/http-extract/releases/tag/v0.1.1) - 2026-08-10
+## [0.1.1](https://github.com/nivek3/http-extract/releases/tag/v0.1.1) - 2026-08-10
 
 ### Changed
 
@@ -45,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Remove the former public field-family module paths in favor of the flat crate-root API.
 
-## [0.1.0](https://github.com/nivek-ph/http-extract/releases/tag/v0.1.0) - 2026-08-10
+## [0.1.0](https://github.com/nivek3/http-extract/releases/tag/v0.1.0) - 2026-08-10
 
 ### Added
 
