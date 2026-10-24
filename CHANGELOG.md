@@ -7,8 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.4] - 2026-10-24
-
 ### Added
 
 - Add `Forwarded` proto extractors returning decoded, lowercase protocols with repeated-field handling, scheme-syntax validation, and duplicate parameter rejection.
